@@ -21,7 +21,10 @@ package bitcamp.myapp;
 //import bitcamp.myapp.handler.member.MemberModifyHandler;
 //import bitcamp.myapp.handler.member.MemberViewHandler;
 import java.io.File;
-    import org.apache.catalina.WebResourceRoot;
+import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.Set;
+import org.apache.catalina.WebResourceRoot;
 import org.apache.catalina.connector.Connector;
 import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.startup.Tomcat;
@@ -38,8 +41,16 @@ import org.springframework.web.bind.annotation.GetMapping;
 @EnableTransactionManagement
 @PropertySource({
 //    "classpath:config/jdbc.properties"
-    "classpath:config/ncp.properties",
-    "classpath:config/ncp-secret.properties"
+//    "classpath:config/ncp.properties",
+//    "classpath:config/ncp-secret.properties"
+
+//    "file:${HOME}/config/jdbc.properties",
+//    "file:${HOME}/config/ncp.properties",
+//    "file:${HOME}/config/ncp-secret.properties"
+
+    "file:${user.home}/config/jdbc.properties",
+    "file:${user.home}/config/ncp.properties",
+    "file:${user.home}/config/ncp-secret.properties"
 })
 @Controller
 public class App {
@@ -71,6 +82,12 @@ public class App {
     System.out.println("과제관리 시스템 서버 실행!");
 
     SpringApplication.run(App.class, args);
+
+    Properties props = System.getProperties();
+    Set<Entry<Object,Object>> entrySet = props.entrySet();
+    for (Entry<Object,Object> entry : entrySet) {
+      System.out.printf("%s=%s\n", entry.getKey(), entry.getValue());
+    }
   }
   @GetMapping("/home")
   public void home() {
