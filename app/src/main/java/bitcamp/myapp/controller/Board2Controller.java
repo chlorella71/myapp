@@ -18,11 +18,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.SessionAttributes;
+import org.springframework.web.bind.support.SessionStatus;
 import org.springframework.web.multipart.MultipartFile;
 
 @RequiredArgsConstructor
 @Controller
 @RequestMapping("/board2")
+@SessionAttributes("attachedFiles")
 public class Board2Controller {
 
   private static final Log log = LogFactory.getLog(Board2Controller.class);
@@ -40,8 +44,9 @@ public class Board2Controller {
   @PostMapping("add")
   public String add(
       Board board,
-      MultipartFile[] files,
-      HttpSession session) throws Exception {
+//      MultipartFile[] files,
+      HttpSession session,
+      SessionStatus sessionStatus) throws Exception {
 
     Member loginUser = (Member) session.getAttribute("loginUser");
     if (loginUser == null) {
@@ -49,20 +54,23 @@ public class Board2Controller {
     }
     board.setWriter(loginUser);
 
-    ArrayList<AttachedFile> attachedFiles = new ArrayList<>();
-    for (MultipartFile file : files) {
-      if (file.getSize() == 0) {
-        continue;
-      }
-      String filename = storageService.upload(this.bucketName, this.uploadDir, file);
-      attachedFiles.add(AttachedFile.builder().filePath(filename).build());
-    }
+    List<AttachedFile> attachedFiles = (List<AttachedFile>) session.getAttribute("attachedFiles");
 
+    for (int i = attachedFiles.size() - 1; i >= 0; i--) {
+      AttachedFile attachedFile = attachedFiles.get(i);
+      if (board.getContent().indexOf(attachedFile.getFilePath()) == -1) {
+        storageService.delete(this.bucketName, this.uploadDir, attachedFile.getFilePath());
+        log.debug(String.format("%s 파일 삭제!", attachedFile.getFilePath()));
+        attachedFiles.remove(i);
+      }
+    }
     if (attachedFiles.size() > 0) {
       board.setFileList(attachedFiles);
     }
 
     boardService.add(board);
+
+    sessionStatus.setComplete();
 
     return "redirect:list";
   }
@@ -107,8 +115,8 @@ public class Board2Controller {
   @PostMapping("update")
   public String update(
       Board board,
-      MultipartFile[] files,
-      HttpSession session) throws Exception {
+      HttpSession session,
+      SessionStatus sessionStatus) throws Exception {
 
     Member loginUser = (Member) session.getAttribute("loginUser");
     if (loginUser == null) {
@@ -116,6 +124,7 @@ public class Board2Controller {
     }
 
     Board old = boardService.get(board.getNo());
+    log.debug(String.format("%s", old));
     if (old == null) {
       throw new Exception("번호가 유효하지 않습니다.");
 
@@ -123,29 +132,54 @@ public class Board2Controller {
       throw new Exception("권한이 없습니다.");
     }
 
-    ArrayList<AttachedFile> attachedFiles = new ArrayList<>();
-    for (MultipartFile file : files) {
-      if (file.getSize() == 0) {
-        continue;
+    List<AttachedFile> attachedFiles = (List<AttachedFile>) session.getAttribute("attachedFiles");
+
+    if (old.getFileList().size() > 0) {
+      attachedFiles.addAll(old.getFileList());
+    }
+
+    for (int i = attachedFiles.size() - 1; i >= 0; i--) {
+      AttachedFile attachedFile = attachedFiles.get(i);
+      if (board.getContent().indexOf(attachedFile.getFilePath()) == -1) {
+        storageService.delete(this.bucketName, this.uploadDir, attachedFile.getFilePath());
+        log.debug(String.format("%s 파일 삭제!", attachedFile.getFilePath()));
+        attachedFiles.remove(i);
       }
-      String filename = storageService.upload(this.bucketName, this.uploadDir, file);
-      attachedFiles.add(AttachedFile.builder().filePath(filename).build());
     }
 
     if (attachedFiles.size() > 0) {
       board.setFileList(attachedFiles);
     }
 
-    // 네이버 스토리지에 저장된 이미지를 지우기 위함
-    List<AttachedFile> oldFiles = boardService.getAttachedFiles(board.getNo());
-
     boardService.update(board);
 
-    for (AttachedFile file : oldFiles) {
-      storageService.delete(this.bucketName, this.uploadDir, file.getFilePath());
-    }
+    sessionStatus.setComplete();
 
     return "redirect:list";
+
+//    ArrayList<AttachedFile> attachedFiles = new ArrayList<>();
+//    for (MultipartFile file : files) {
+//      if (file.getSize() == 0) {
+//        continue;
+//      }
+//      String filename = storageService.upload(this.bucketName, this.uploadDir, file);
+//      attachedFiles.add(AttachedFile.builder().filePath(filename).build());
+//    }
+//
+//    if (attachedFiles.size() > 0) {
+//      board.setFileList(attachedFiles);
+//    }
+//
+//    // 네이버 스토리지에 저장된 이미지를 지우기 위함
+//    List<AttachedFile> oldFiles = boardService.getAttachedFiles(board.getNo());
+//
+//    boardService.update(board);
+//
+//    for (AttachedFile file : oldFiles) {
+//      storageService.delete(this.bucketName, this.uploadDir, file.getFilePath());
+//    }
+//
+//    return "redirect:list";
 
   }
 
@@ -199,5 +233,28 @@ public class Board2Controller {
     storageService.delete(this.bucketName, this.uploadDir, file.getFilePath());
 
     return "redirect:../view?no=" + file.getBoardNo();
+  }
+
+  @PostMapping("file/upload")
+  @ResponseBody
+  public Object fileUpload(MultipartFile[] files, HttpSession session, Model model) throws Exception {
+    ArrayList<AttachedFile> attachedFiles = new ArrayList<>();
+
+    Member loginUser = (Member) session.getAttribute("loginUser");
+    if (loginUser == null) {
+      return attachedFiles;
+    }
+
+    for (MultipartFile file : files) {
+      if (file.getSize() == 0) {
+        continue;
+      }
+      String filename = storageService.upload(this.bucketName, this.uploadDir, file);
+      attachedFiles.add(AttachedFile.builder().filePath(filename).build());
+    }
+
+    model.addAttribute("attachedFiles", attachedFiles);
+
+    return attachedFiles;
   }
 }
