@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -124,7 +125,8 @@ public class Board2Controller {
     }
 
     Board old = boardService.get(board.getNo());
-    log.debug(String.format("%s", old));
+    old.setFileList(boardService.getAttachedFiles(board.getNo()));
+    log.debug(String.format("%s", old.getFileList()));
     if (old == null) {
       throw new Exception("번호가 유효하지 않습니다.");
 
@@ -133,24 +135,28 @@ public class Board2Controller {
     }
 
     List<AttachedFile> attachedFiles = (List<AttachedFile>) session.getAttribute("attachedFiles");
+    if (attachedFiles == null) {
+      attachedFiles = new ArrayList<>();
+    }
 
     if (old.getFileList().size() > 0) {
       attachedFiles.addAll(old.getFileList());
     }
+    if (attachedFiles != null) {
 
-    for (int i = attachedFiles.size() - 1; i >= 0; i--) {
-      AttachedFile attachedFile = attachedFiles.get(i);
-      if (board.getContent().indexOf(attachedFile.getFilePath()) == -1) {
-        storageService.delete(this.bucketName, this.uploadDir, attachedFile.getFilePath());
-        log.debug(String.format("%s 파일 삭제!", attachedFile.getFilePath()));
-        attachedFiles.remove(i);
+      for (int i = attachedFiles.size() - 1; i >= 0; i--) {
+        AttachedFile attachedFile = attachedFiles.get(i);
+        if (!board.getContent().contains(attachedFile.getFilePath())) {
+          storageService.delete(this.bucketName, this.uploadDir, attachedFile.getFilePath());
+          log.debug(String.format("%s 파일 삭제!", attachedFile.getFilePath()));
+          attachedFiles.remove(i);
+        }
+      }
+
+      if (attachedFiles.size() > 0) {
+        board.setFileList(attachedFiles);
       }
     }
-
-    if (attachedFiles.size() > 0) {
-      board.setFileList(attachedFiles);
-    }
-
     boardService.update(board);
 
     sessionStatus.setComplete();
@@ -237,7 +243,8 @@ public class Board2Controller {
 
   @PostMapping("file/upload")
   @ResponseBody
-  public Object fileUpload(MultipartFile[] files, HttpSession session, Model model) throws Exception {
+  public Object fileUpload(MultipartFile[] files, HttpSession session, Model model)
+      throws Exception {
     ArrayList<AttachedFile> attachedFiles = new ArrayList<>();
 
     Member loginUser = (Member) session.getAttribute("loginUser");
