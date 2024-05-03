@@ -20,7 +20,9 @@ package bitcamp.myapp;
 //import bitcamp.myapp.handler.member.MemberListHandler;
 //import bitcamp.myapp.handler.member.MemberModifyHandler;
 //import bitcamp.myapp.handler.member.MemberViewHandler;
+import bitcamp.myapp.annotation.LoginUserArgumentResolver;
 import java.io.File;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
@@ -30,12 +32,16 @@ import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.webresources.DirResourceSet;
 import org.apache.catalina.webresources.StandardRoot;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @SpringBootApplication
 @EnableTransactionManagement
@@ -53,7 +59,10 @@ import org.springframework.web.bind.annotation.GetMapping;
     "file:${user.home}/config/ncp-secret.properties"
 })
 @Controller
-public class App {
+public class App implements WebMvcConfigurer {
+
+  @Autowired
+  LoginUserArgumentResolver loginUserArgumentResolver;
 
 //  ExecutorService executorService = Executors.newCachedThreadPool();
 //
@@ -99,7 +108,12 @@ public class App {
 
   }
 
-//    new App().run();
+  @Override
+  public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+    resolvers.add(loginUserArgumentResolver);
+  }
+
+  //    new App().run();
 
 //    // 톰캣 서버를 구동시키는 객체 준비
 //    Tomcat tomcat = new Tomcat();

@@ -1,5 +1,6 @@
 package bitcamp.myapp.controller;
 
+import bitcamp.myapp.annotation.LoginUser;
 import bitcamp.myapp.service.BoardService;
 import bitcamp.myapp.service.StorageService;
 import bitcamp.myapp.vo.AttachedFile;
@@ -48,15 +49,11 @@ public class BoardController {
   public String add(
       Board board,
       MultipartFile[] attachedFiles,
-      HttpSession session,
+    @LoginUser Member loginUser,
       Model model) throws Exception {
 
     model.addAttribute("category", board.getCategory());
 
-    Member loginUser = (Member) session.getAttribute("loginUser");
-    if (loginUser == null) {
-      throw new Exception("로그인하시기 바랍니다!");
-    }
     board.setWriter(loginUser);
 
     ArrayList<AttachedFile> files = new ArrayList<>();
@@ -134,15 +131,11 @@ public class BoardController {
   public String update(
       Board board,
       MultipartFile[] attachedFiles,
+      @LoginUser Member loginUser,
       HttpSession session,
       Model model) throws Exception {
 
     model.addAttribute("category", board.getCategory());
-
-      Member loginUser = (Member) session.getAttribute("loginUser");
-      if (loginUser == null) {
-        throw new Exception("로그인하시기 바랍니다!");
-      }
 
       Board old = boardService.get(board.getNo());
       if (old == null) {
@@ -178,12 +171,9 @@ public class BoardController {
   public String delete(
       int category,
       int no,
-      HttpSession session) throws Exception {
+      @LoginUser Member loginUser
+      ) throws Exception {
 
-      Member loginUser = (Member) session.getAttribute("loginUser");
-      if (loginUser == null) {
-        throw new Exception("로그인하시기 바랍니다!");
-      }
       Board board = boardService.get(no);
       if (board == null) {
         throw new Exception("번호가 유효하지 않습니다.");
@@ -215,12 +205,8 @@ public class BoardController {
   public String fileDelete(
       int category,
       int no,
-      HttpSession session) throws Exception {
+      @LoginUser Member loginUser) throws Exception {
 
-    Member loginUser = (Member) session.getAttribute("loginUser");
-    if (loginUser == null) {
-      throw new Exception("로그인하시기 바랍니다!");
-    }
 
     AttachedFile file = boardService.getAttachedFile(no);
     if (file == null) {

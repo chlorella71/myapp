@@ -1,5 +1,6 @@
 package bitcamp.myapp.controller;
 
+import bitcamp.myapp.annotation.LoginUser;
 import bitcamp.myapp.service.Board2Service;
 import bitcamp.myapp.service.StorageService;
 import bitcamp.myapp.vo.AttachedFile;
@@ -45,17 +46,19 @@ public class Board2Controller {
   @PostMapping("add")
   public String add(
       Board board,
+      @LoginUser Member loginUser,
 //      MultipartFile[] files,
       HttpSession session,
       SessionStatus sessionStatus) throws Exception {
 
-    Member loginUser = (Member) session.getAttribute("loginUser");
-    if (loginUser == null) {
-      throw new Exception("로그인하시기 바랍니다!");
-    }
+    log.debug(loginUser);
+
     board.setWriter(loginUser);
 
     List<AttachedFile> attachedFiles = (List<AttachedFile>) session.getAttribute("attachedFiles");
+    if (attachedFiles == null) {
+      attachedFiles = new ArrayList<>();
+    }
 
     for (int i = attachedFiles.size() - 1; i >= 0; i--) {
       AttachedFile attachedFile = attachedFiles.get(i);
@@ -116,13 +119,9 @@ public class Board2Controller {
   @PostMapping("update")
   public String update(
       Board board,
+      @LoginUser Member loginUser,
       HttpSession session,
       SessionStatus sessionStatus) throws Exception {
-
-    Member loginUser = (Member) session.getAttribute("loginUser");
-    if (loginUser == null) {
-      throw new Exception("로그인하시기 바랍니다!");
-    }
 
     Board old = boardService.get(board.getNo());
     old.setFileList(boardService.getAttachedFiles(board.getNo()));
@@ -190,12 +189,9 @@ public class Board2Controller {
   }
 
   @GetMapping("delete")
-  public String delete(int no, HttpSession session) throws Exception {
-
-    Member loginUser = (Member) session.getAttribute("loginUser");
-    if (loginUser == null) {
-      throw new Exception("로그인하시기 바랍니다!");
-    }
+  public String delete(
+      int no,
+      @LoginUser Member loginUser) throws Exception {
 
     Board board = boardService.get(no);
     if (board == null) {
@@ -217,12 +213,7 @@ public class Board2Controller {
   }
 
   @GetMapping("file/delete")
-  public String fileDelete(int no, HttpSession session) throws Exception {
-
-    Member loginUser = (Member) session.getAttribute("loginUser");
-    if (loginUser == null) {
-      throw new Exception("로그인하시기 바랍니다!");
-    }
+  public String fileDelete(int no, @LoginUser Member loginUser) throws Exception {
 
     AttachedFile file = boardService.getAttachedFile(no);
     if (file == null) {
@@ -243,11 +234,10 @@ public class Board2Controller {
 
   @PostMapping("file/upload")
   @ResponseBody
-  public Object fileUpload(MultipartFile[] files, HttpSession session, Model model)
+  public Object fileUpload(MultipartFile[] files, @LoginUser Member loginUser, HttpSession session, Model model)
       throws Exception {
     ArrayList<AttachedFile> attachedFiles = new ArrayList<>();
 
-    Member loginUser = (Member) session.getAttribute("loginUser");
     if (loginUser == null) {
       return attachedFiles;
     }

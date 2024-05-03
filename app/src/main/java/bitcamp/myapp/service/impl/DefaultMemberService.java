@@ -39,6 +39,11 @@ public class DefaultMemberService implements MemberService {
   }
 
   @Override
+  public Member get(String email) {
+    return memberDao.findByEmail(email);
+  }
+
+  @Override
   public int update(Member member) {
     return memberDao.update(member);
   }
